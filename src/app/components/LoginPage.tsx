@@ -85,19 +85,25 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       if (isRestApi()) {
+        console.log('🔐 Using REST API for authentication');
+        
         if (isSignUp) {
           if (!username || username.length < 3) throw new Error("Username must be at least 3 characters");
           if (password !== confirmPassword) throw new Error("Passwords do not match");
+          console.log('📝 Registering user:', email);
           const { token, user } = await authRegister({
             email,
             password,
             username: username.toLowerCase(),
           });
+          console.log('✅ Registration successful');
           useAuthStore.getState().setAuth(token, user.id);
           // Let the parent component update through Zustand store subscription
           return;
         } else {
+          console.log('🔑 Logging in user:', email);
           const { token, user } = await authLogin({ email, password });
+          console.log('✅ Login successful');
           useAuthStore.getState().setAuth(token, user.id);
           return;
         }
@@ -144,7 +150,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
       onLogin?.();
     } catch (err: any) {
-      const msg = err.message || 'An error occurred. Please try again.';
+      console.error('❌ Auth error:', err);
+      const msg = err?.message || err?.toString() || 'An error occurred. Please try again.';
       setError(msg);
       
       // If the error is about existing email, auto-switch to sign in mode

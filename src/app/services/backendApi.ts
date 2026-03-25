@@ -29,6 +29,7 @@ export type MeResponse = {
 
 async function rawFetch(path: string, init: RequestInit = {}, withAuth: boolean): Promise<Response> {
   const base = restApiBase();
+  console.log('🌐 Fetching:', `${base}${path}`);
   const headers = new Headers(init.headers);
   if (
     !headers.has('Content-Type') &&
@@ -41,7 +42,23 @@ async function rawFetch(path: string, init: RequestInit = {}, withAuth: boolean)
     const token = useAuthStore.getState().token;
     if (token) headers.set('Authorization', `Bearer ${token}`);
   }
-  return fetch(`${base}${path}`, { ...init, headers });
+  
+  // Add timeout to prevent hanging requests
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  
+  try {
+    const response = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout (10s) - Backend not responding. Check API_URL: ' + base);
+    }
+    console.error('🔴 Fetch error:', error);
+    throw error;
+  }
 }
 
 export async function restJson<T>(path: string, init: RequestInit = {}, withAuth = true): Promise<T> {
