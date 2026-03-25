@@ -6,7 +6,7 @@ import { FullScreenPostView } from "./FullScreenPostView";
 import { FullScreenImageViewer } from "./FullScreenImageViewer";
 import { StoryViewer } from "./StoryViewer";
 import { Post, Story } from "../types";
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '../../utils/supabase/info';
 import { useUserProfile, useUserPosts } from '../hooks/useApi';
 
 interface ListUser {
