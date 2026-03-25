@@ -6,7 +6,7 @@ import { FullScreenPostView } from "./FullScreenPostView";
 import { CommentsModal } from "./CommentsModal";
 import { ShareModal } from "./ShareModal";
 import { StoryViewer } from "./StoryViewer";
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 import * as db from '../db';
 
 // --- Types & Mock Data ---
