@@ -94,12 +94,13 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             username: username.toLowerCase(),
           });
           useAuthStore.getState().setAuth(token, user.id);
+          // Let the parent component update through Zustand store subscription
+          return;
         } else {
           const { token, user } = await authLogin({ email, password });
           useAuthStore.getState().setAuth(token, user.id);
+          return;
         }
-        onLogin?.();
-        return;
       }
 
       if (isSignUp) {
@@ -212,7 +213,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="w-full h-full bg-background flex flex-col items-center justify-center p-4 relative overflow-auto">
       {/* Industrial Background Grid */}
       <div className="absolute inset-0 pointer-events-none z-0 opacity-20"
         style={{ backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -227,7 +228,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       <div className="absolute bottom-60 right-8 w-3 h-3 bg-card border-2 border-foreground opacity-20 rotate-12"
         style={{ animation: 'floatY 3s ease-in-out 0.8s infinite' }} />
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-md relative z-10 my-auto">
         {/* Logo */}
         <div className="mb-8 text-center">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-foreground border-4 border-foreground mb-4 shadow-[8px_8px_0px_0px_rgba(255,255,255,1)]"
