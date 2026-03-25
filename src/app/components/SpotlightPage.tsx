@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Crown, Star, TrendingUp, Heart, MessageCircle, Eye, ChevronRight, Sparkles, Award, Flame, Zap, Users, Calendar, ArrowUpRight, Bookmark, Play, X, Plus, Check, Image } from 'lucide-react';
 import { Post } from '../types';
-import { projectId, publicAnonKey } from '../../../utils/supabase/info';
+import { projectId, publicAnonKey } from '../../../utils/supabase/info.tsx';
 
 interface Creator {
   id: string;
