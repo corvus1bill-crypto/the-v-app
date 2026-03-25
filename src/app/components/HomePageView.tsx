@@ -7,6 +7,7 @@ import { projectId, publicAnonKey } from '../supabaseClient';
 import * as db from '../db';
 import { explorePosts } from '../data/posts';
 import { useSounds } from '../hooks/useSounds';
+import { useFeed, useExplorePosts } from '../hooks/useApi';
 import { SettingsPage } from './SettingsPage';
 import { PostCard } from './PostCard';
 import { Stories } from './Stories';
@@ -303,6 +304,25 @@ export function HomePage({
   const [newPostsCount, setNewPostsCount] = useState(0);
   const [showNewPostsBanner, setShowNewPostsBanner] = useState(false);
 
+  // API Hooks for real data
+  const { 
+    posts: apiPosts, 
+    loading: feedLoadingApi, 
+    error: feedErrorApi, 
+    loadMore: loadMoreFeed 
+  } = useFeed(currentUserId || '');
+  
+  const { 
+    posts: exploreFeedPosts, 
+    loading: exploreLoading 
+  } = useExplorePosts();
+
+  // Use API data if available, fall back to props
+  const feedPosts = apiPosts.length > 0 ? apiPosts : (posts || []);
+  const exploreFeeds = exploreFeedPosts.length > 0 ? exploreFeedPosts : (forYouPosts || explorePosts);
+  const isLoading = feedLoadingApi || exploreLoading || feedLoading;
+  const loadError = feedErrorApi || feedError || null;
+
   // Pull-to-refresh
   const [pullY, setPullY] = useState(0);
   const pullStartYRef = useRef(0);
@@ -336,7 +356,7 @@ export function HomePage({
 
   // Compute trending from actual posts in the app
   const trendingSearches = useMemo(() => {
-    const allPosts = [...posts, ...(forYouPosts || []), ...explorePosts];
+    const allPosts = [...feedPosts, ...exploreFeeds];
     // Deduplicate by post id
     const seen = new Set<string>();
     const uniquePosts = allPosts.filter(p => {
@@ -345,7 +365,7 @@ export function HomePage({
       return true;
     });
     return computeTrending(uniquePosts);
-  }, [posts, forYouPosts]);
+  }, [feedPosts, exploreFeeds]);
 
   const addToSearchHistory = (query: string) => {
     const trimmed = query.trim();
@@ -1134,7 +1154,7 @@ export function HomePage({
                 return now - 86400000; // Default: 1 day ago
               };
 
-              const followingPosts = posts
+              const followingPosts = feedPosts
                 .filter(p => {
                   const postTime = parseTimestamp(p.timestamp, (p as any).createdAt);
                   return (now - postTime) <= SEVEN_DAYS_MS;
@@ -1147,17 +1167,17 @@ export function HomePage({
 
               return (
                 <>
-                  {feedLoading && (
+                  {isLoading && (
                     <div className="flex justify-center py-8" aria-busy="true">
                       <Loader2 className="w-10 h-10 animate-spin text-foreground" strokeWidth={2.5} />
                     </div>
                   )}
-                  {feedError && (
+                  {loadError && (
                     <div
                       className="mx-4 mb-4 p-3 border-2 border-destructive bg-destructive/10 text-destructive text-sm font-bold text-center uppercase font-mono"
                       role="alert"
                     >
-                      {feedError}
+                      {loadError}
                     </div>
                   )}
                   {/* Daily Vibe Prompt */}
@@ -1228,14 +1248,14 @@ export function HomePage({
               const engagementScore = (p: Post) =>
                 p.likes * 1 + p.comments * 2 + p.shares * 3;
 
-              const followedIds = new Set(posts.map(p => p.userId));
+              const followedIds = new Set(feedPosts.map(p => p.userId));
 
               // Separate explore/discovery posts from followed-user posts
-              const discoveryPosts = forYouPosts
+              const discoveryPosts = exploreFeeds
                 .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
                 .sort((a, b) => engagementScore(b) - engagementScore(a));
 
-              const followedPosts = posts
+              const followedPosts = feedPosts
                 .filter(p => p.userId !== currentUserId)
                 .sort((a, b) => engagementScore(b) - engagementScore(a));
 

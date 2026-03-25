@@ -7,6 +7,7 @@ import { FullScreenImageViewer } from "./FullScreenImageViewer";
 import { StoryViewer } from "./StoryViewer";
 import { Post, Story } from "../types";
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { useUserProfile, useUserPosts } from '../hooks/useApi';
 
 interface ListUser {
   userId: string;
@@ -180,6 +181,13 @@ export function UserProfile({
   const [followersList, setFollowersList] = useState<ListUser[]>([]);
   const [followingList, setFollowingList] = useState<ListUser[]>([]);
   const [loadingUserList, setLoadingUserList] = useState(false);
+
+  // API Hooks for user profile and posts
+  const { userProfile: apiProfile, loading: profileLoading } = useUserProfile(userId);
+  const { posts: userPostsApi, loading: postsLoading } = useUserPosts(userId);
+
+  // Use API data if available, fall back to props
+  const displayPosts = userPostsApi.length > 0 ? userPostsApi : posts;
 
   // Fetch real follower/following counts from backend on mount
   useEffect(() => {
@@ -566,9 +574,9 @@ export function UserProfile({
               <h3 className="font-black text-sm uppercase">POST DATABASE</h3>
             </div>
 
-            {posts.length > 0 ? (
+            {displayPosts.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
-                {posts.map((post) => (
+                {displayPosts.map((post) => (
                   <button
                     key={post.id}
                     id={`profile-post-${post.id}`}

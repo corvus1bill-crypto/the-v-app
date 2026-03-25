@@ -6,6 +6,7 @@ import { AspectRatioCropModal } from './AspectRatioCropModal';
 import { PhotoFilterPicker, getFilterStyle, getFilterById, getFilterOverlay, getCombinedFilterStyle, getCameraEraFilter, getCameraEraOverlay, getCameraEraGrain, getCameraEraLightLeak } from './PhotoFilterPicker';
 import { VHSNightVisionOverlay, VHS_NIGHT_VISION_ID } from './VHSNightVisionOverlay';
 import * as db from '../db';
+import { useCreatePost, useUploadMedia } from '../hooks/useApi';
 
 interface CreatePostPageProps {
   onClose: () => void;
@@ -43,6 +44,10 @@ export function CreatePostPage({ onClose, onAddPost, onAddStory, dailyPrompt, cu
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingImages, setLoadingImages] = useState<Set<number>>(new Set());
+
+  // API Hooks
+  const { createPost, loading: createPostLoading, error: createPostError } = useCreatePost(currentUserId || '');
+  const { uploadMedia, loading: uploadLoading } = useUploadMedia();
 
   // Filter state
   const [mediaFilters, setMediaFilters] = useState<Record<number, string>>({});
@@ -373,17 +378,19 @@ export function CreatePostPage({ onClose, onAddPost, onAddStory, dailyPrompt, cu
           thumbBlobs: mediaItems.map(i => i.thumbBlob).filter((blob): blob is Blob => !!blob),
         });
 
-        // Also save to real database if user is logged in
+        // Also save to real API if user is logged in
         if (currentUserId) {
           try {
-            await db.createPost(
-              currentUserId,
-              caption.trim(),
-              location.trim() || undefined,
-              images.length > 0 ? images : undefined
-            );
+            await createPost({
+              caption: caption.trim(),
+              imageUrls: images.length > 0 ? images : undefined,
+              videoUrl: submittedVideoUrl,
+              location: location.trim() || undefined,
+              visibility
+            });
+            console.log('✅ Post saved to API successfully');
           } catch (error) {
-            console.error('Error saving post to database:', error);
+            console.error('Error saving post to API:', error);
             // Post still created locally, so don't show error to user
           }
         }
