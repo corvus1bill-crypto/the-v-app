@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 
 // Hook for fetching feed with pagination
 export function useFeed(limit = 50) {
-  const [posts, setPosts] = useState(backendApi.RestFeedPost[]);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
