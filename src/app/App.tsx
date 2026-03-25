@@ -25,6 +25,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ConfettiBurst, useConfetti } from "./components/ConfettiBurst";
 import { ShareSheet } from "./components/ShareSheet";
 import { incrementStreak } from "./components/VibeStreak";
+import { DebugPage } from "./components/DebugPage";
 
 // Lazy-loaded page components — only fetched when navigated to
 const LeaderboardPage = lazy(() => import("./components/LeaderboardPage").then(m => ({ default: m.LeaderboardPage })));
@@ -1594,6 +1595,10 @@ function AppContent() {
   const viewingUserStories = useMemo(() => viewingProfileId ? stories.filter(s => s.userId === viewingProfileId) : [], [stories, viewingProfileId]);
 
   if (!isLoggedIn) {
+    // Check for debug route even without login
+    if (window.location.pathname === '/debug') {
+      return <DebugPage />;
+    }
     return <LoginPage />; // Callback not needed as onAuthStateChange handles it
   }
 

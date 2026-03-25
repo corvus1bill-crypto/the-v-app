@@ -349,13 +349,19 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         {/* Demo Login */}
-        <div className="mt-8 text-center"
+        <div className="mt-8 text-center space-y-4"
           style={{ animation: 'fadeSlideUp 0.5s cubic-bezier(.22,.68,0,1.2) 0.9s both' }}>
           <button onClick={handleDemoLogin} disabled={loading}
             className="inline-flex items-center gap-2 px-6 py-2 bg-card border-2 border-foreground font-bold text-sm shadow-[4px_4px_0px_0px_var(--foreground)] hover:translate-y-1 hover:shadow-none transition-all active:scale-95">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-status-pulse"></span>
             {loading ? 'INITIALIZING DEMO...' : 'TRY DEMO MODE'}
           </button>
+          
+          <div className="text-xs">
+            <a href="/debug" className="text-foreground/50 hover:text-foreground border-b border-foreground/50 hover:border-foreground transition-colors">
+              Having issues? Check configuration →
+            </a>
+          </div>
         </div>
       </div>
     </div>
