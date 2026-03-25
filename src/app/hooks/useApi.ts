@@ -344,3 +344,73 @@ export function useNotifications() {
 
   return { notifications, loading, error, markAsRead };
 }
+
+// Hook for getting user profile
+export function useUserProfile(userId: string) {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    const loadProfile = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await backendApi.getUserProfile(userId);
+        setUser(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [userId]);
+
+  return { user, loading, error };
+}
+
+// Hook for getting user posts
+export function useUserPosts(userId: string, limit = 50) {
+  const [posts, setPosts] = useState<backendApi.RestFeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadPosts = useCallback(async (pageOffset: number = 0) => {
+    if (!userId) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await backendApi.getUserPostsApi(userId, limit);
+      setPosts(pageOffset === 0 ? response.posts : prev => [...prev, ...response.posts]);
+      setOffset(pageOffset + limit);
+      setHasMore(response.posts.length === limit);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load posts');
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, limit]);
+
+  useEffect(() => {
+    if (userId) {
+      loadPosts(0);
+    }
+  }, [userId]);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loading) return;
+    await loadPosts(offset);
+  }, [offset, hasMore, loading, loadPosts]);
+
+  return { posts, loading, error, hasMore, loadMore };
+}

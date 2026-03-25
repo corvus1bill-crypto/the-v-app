@@ -215,6 +215,10 @@ export async function getUserPostsApi(userId: string, limit = 50): Promise<{ pos
   return restJson(`/api/v1/users/${userId}/posts?limit=${limit}`, { method: 'GET' }, true);
 }
 
+export async function getUserProfile(userId: string): Promise<any> {
+  return restJson(`/api/v1/users/${userId}`, { method: 'GET' }, true);
+}
+
 // Hashtag API endpoints
 export type Hashtag = {
   id: string;
