@@ -1,0 +1,61 @@
+{
+  "name": "Vibe Social - Your Daily Vibes",
+  "short_name": "Vibe",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "scope": "/",
+  "background_color": "#ff7a2e",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png",
+      "sizes": "540x720",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any masking"
+    },
+    {
+      "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["social", "news"],
+  "shortcuts": [
+    {
+      "name": "Create Post",
+      "short_name": "Post",
+      "description": "Quickly create a new post",
+      "url": "/?action=create",
+      "icons": [{ "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "View Feed",
+      "short_name": "Feed",
+      "description": "View your daily feed",
+      "url": "/?action=feed",
+      "icons": [{ "src": "https://static.figma.com/uploads/76faf8f617b56e6f079c5a7ead8f927f5a5fee32.png", "sizes": "96x96" }]
+    }
+  ]
+}

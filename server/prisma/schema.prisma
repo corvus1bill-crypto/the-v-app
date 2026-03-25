@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum NotificationType {
+  like
+  comment
+  follow
+  message
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  profile      Profile?
+}
+
+/// Profile id matches User.id (same as Supabase-style profiles)
+model Profile {
+  id        String  @id
+  user      User    @relation(fields: [id], references: [id], onDelete: Cascade)
+  username  String  @unique
+  fullName  String?
+  bio       String?
+  avatarUrl String?
+  website   String?
+  isPrivate Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts                 Post[]
+  likes                 Like[]
+  comments              Comment[]
+  followers             Follow[] @relation("Following")
+  following             Follow[] @relation("Follower")
+  sentMessages          Message[] @relation("Sender")
+  notificationsReceived Notification[] @relation("NotifUser")
+  notificationsAsActor  Notification[] @relation("NotifActor")
+  savedPosts            SavedPost[]
+  conversationParts     ConversationParticipant[]
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  userId    String
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caption   String?
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  media        PostMedia[]
+  likes        Like[]
+  comments     Comment[]
+  savedBy      SavedPost[]
+  notifications Notification[]
+  hashtags     PostHashtag[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model PostMedia {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaUrl  String
+  thumbUrl  String?
+  mediaType String   @default("image")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  userId    String
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  userId    String
+  user      Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  notifications Notification[]
+
+  @@index([postId])
+  @@index([parentId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  follower    Profile  @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   Profile  @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  status      String   @default("accepted")
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@index([followerId])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  messages  Message[]
+  participants ConversationParticipant[]
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         Profile      @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  content        String?
+  mediaUrl       String?
+  seen           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      Profile          @relation("NotifUser", fields: [userId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     Profile?         @relation("NotifActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type      NotificationType
+  postId    String?
+  post      Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model SavedPost {
+  id        String   @id @default(uuid())
+  userId    String
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId])
+}
+
+model Hashtag {
+  id        String   @id @default(uuid())
+  tag       String   @unique
+  postCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts PostHashtag[]
+
+  @@index([tag])
+}
+
+model PostHashtag {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtagId String
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, hashtagId])
+  @@index([postId])
+  @@index([hashtagId])
+}
