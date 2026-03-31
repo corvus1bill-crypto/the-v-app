@@ -336,6 +336,27 @@ function AppContent() {
     };
   }, []);
 
+  // DEV helper: force a local authenticated session for development when backend is down.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (import.meta.env.VITE_DEV_FORCE_AUTH !== 'true') return;
+    const token = import.meta.env.VITE_DEV_AUTH_TOKEN || 'dev-token';
+    const uid = import.meta.env.VITE_DEV_USER_ID || 'dev-shameekalves6';
+    useAuthStore.getState().setAuth(token, uid);
+    setSession({ user: { id: uid, created_at: new Date().toISOString() } });
+    setIsLoggedIn(true);
+    setCurrentUserId(uid);
+    setUserProfile(prev => ({
+      ...prev,
+      username: import.meta.env.VITE_DEV_USER_NAME || (import.meta.env.VITE_DEV_USER_ID || uid),
+      name: import.meta.env.VITE_DEV_DISPLAY_NAME || 'Dev User',
+      avatar: import.meta.env.VITE_DEV_AVATAR || prev.avatar,
+    }));
+    setIsLoadingProfile(false);
+    console.log('✅ DEV: forced auth as', uid);
+  }, []);
+
+  // Supabase auth handling (skip when using REST API)
   useEffect(() => {
     if (isRestApi()) return;
 
@@ -357,6 +378,12 @@ function AppContent() {
   // ── REST JWT session (Zustand + /auth/me) ──
   useEffect(() => {
     if (!isRestApi()) return;
+
+    // If developer forced-auth is enabled, skip calling the backend for /me
+    if (import.meta.env.DEV && import.meta.env.VITE_DEV_FORCE_AUTH === 'true') {
+      setIsLoadingProfile(false);
+      return;
+    }
 
     if (!restToken) {
       setIsLoggedIn(false);

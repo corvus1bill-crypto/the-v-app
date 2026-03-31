@@ -3,6 +3,7 @@ import { Eye, EyeOff, ArrowRight, Zap, AlertCircle, CheckCircle } from "lucide-r
 import { supabase, projectId, publicAnonKey } from "../supabaseClient";
 import { isRestApi } from "../config/restApi";
 import { authLogin, authRegister, checkUsername } from "../services/backendApi";
+import authClient from "../services/authClient";
 import { useAuthStore } from "../store/authStore";
 
 interface LoginPageProps {
@@ -82,76 +83,31 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
-      if (isRestApi()) {
-        console.log('🔐 Using REST API for authentication');
-        
-        try {
-          if (isSignUp) {
-            if (!username || username.length < 3) throw new Error("Username must be at least 3 characters");
-            if (password !== confirmPassword) throw new Error("Passwords do not match");
-            console.log('📝 Registering user:', email);
-            const { token, user } = await authRegister({
-              email,
-              password,
-              username: username.toLowerCase(),
-            });
-            console.log('✅ Registration successful');
-            useAuthStore.getState().setAuth(token, user.id);
-            // Let the parent component update through Zustand store subscription
-            return;
-          } else {
-            console.log('🔑 Logging in user:', email);
-            const { token, user } = await authLogin({ email, password });
-            console.log('✅ Login successful');
-            useAuthStore.getState().setAuth(token, user.id);
-            return;
-          }
-        } catch (apiErr: any) {
-          console.warn('⚠️ REST API failed, falling back to Supabase:', apiErr.message);
-          // Fall through to Supabase auth below
-        }
-      }
-
-      // Fallback to Supabase authentication
-      console.log('🔄 Falling back to Supabase authentication');
       if (isSignUp) {
-        if (!username || username.length < 3) throw new Error("Username must be at least 3 characters");
-        if (password !== confirmPassword) throw new Error("Passwords do not match");
-
-        // Sign up via Supabase, then attempt immediate sign-in so users land in the app
-        const { error: signUpError } = await supabase.auth.signUp({ email, password });
-        if (signUpError) throw signUpError;
-
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
-        if (!signInData?.user) throw new Error('Sign-in succeeded but no user returned after sign-up');
-
-      } else {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          // Handle specific login errors
-          if (signInError.message?.includes('Invalid login credentials')) {
-            throw new Error('Invalid email or password. Please try again.');
-          }
-          throw signInError;
+        if (!username || username.length < 3) throw new Error('Username must be at least 3 characters');
+        if (password !== confirmPassword) throw new Error('Passwords do not match');
+        const res = await authClient.signUp(email, password, username.toLowerCase());
+        if (!res.success) throw new Error(res.message || 'Registration failed');
+        if (res.needsVerification) {
+          setError('Account created — please check your email to verify before signing in.');
+          return;
         }
-        if (!signInData?.user) throw new Error('Sign-in succeeded but no user data');
+        // success
+        onLogin?.();
+        return;
+      } else {
+        const res = await authClient.signIn(email, password);
+        if (!res.success) throw new Error(res.message || 'Login failed');
+        onLogin?.();
+        return;
       }
-
-      onLogin?.();
     } catch (err: any) {
       console.error('❌ Auth error:', err);
       const msg = err?.message || err?.toString() || 'An error occurred. Please try again.';
       setError(msg);
-      
-      // If the error is about existing email, auto-switch to sign in mode
-      if (isSignUp && (msg.includes('already registered') || msg.includes('already in use'))) {
-        setTimeout(() => {
-          setIsSignUp(false);
-          setError('This email is registered. Please sign in below.');
-        }, 2000);
+      if (isSignUp && (msg.includes('already registered') || msg.includes('already in use') || msg.includes('already')) ) {
+        setTimeout(() => { setIsSignUp(false); setError('This email is registered. Please sign in below.'); }, 1200);
       }
     } finally {
       setLoading(false);
@@ -163,45 +119,44 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setError(null);
     
     try {
-      if (isRestApi()) {
-        // Demo login depends on Supabase functions and is not available when using the REST API backend.
-        throw new Error('Demo login is not available when using the REST API backend. Please create an account or test on the Supabase-backed deployment.');
+      // In dev, prefer the forced auth override so demo always works
+      if (import.meta.env.DEV && import.meta.env.VITE_DEV_FORCE_AUTH === 'true') {
+        const token = import.meta.env.VITE_DEV_AUTH_TOKEN || 'dev-token';
+        const uid = import.meta.env.VITE_DEV_USER_ID || 'dev-user';
+        useAuthStore.getState().setAuth(token, uid);
+        onLogin?.();
+        return;
       }
+
+      if (isRestApi()) {
+        throw new Error('Demo login is not available when using the REST API backend.');
+      }
+
       console.log('🎮 Demo login: Calling Supabase demo function...');
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-78efa14d/demo-login`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${publicAnonKey}` 
-          }
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
         }
       );
-      
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to setup demo account');
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Failed to setup demo account');
       }
-      
-      const { email, password } = await response.json();
+
+      const { email: demoEmail, password: demoPassword } = await response.json();
       console.log('✅ Demo account ready, signing in...');
-      
-      // Now sign in with the credentials
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) {
-        console.error('❌ Sign-in error:', error);
-        throw error;
-      }
-      
-      if (!data?.user) {
-        throw new Error('Sign-in succeeded but no user data');
-      }
-      
+
+      const signInRes = await authClient.signIn(demoEmail, demoPassword);
+      if (!signInRes.success) throw new Error(signInRes.message || 'Demo sign-in failed');
       console.log('✅ Demo login complete!');
       onLogin?.();
-      
+
     } catch (err: any) {
       console.error('❌ Demo login failed:', err);
       setError(err?.message || 'Demo login failed. Please try regular sign up instead.');
