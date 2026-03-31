@@ -87,58 +87,49 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       if (isRestApi()) {
         console.log('🔐 Using REST API for authentication');
         
-        if (isSignUp) {
-          if (!username || username.length < 3) throw new Error("Username must be at least 3 characters");
-          if (password !== confirmPassword) throw new Error("Passwords do not match");
-          console.log('📝 Registering user:', email);
-          const { token, user } = await authRegister({
-            email,
-            password,
-            username: username.toLowerCase(),
-          });
-          console.log('✅ Registration successful');
-          useAuthStore.getState().setAuth(token, user.id);
-          // Let the parent component update through Zustand store subscription
-          return;
-        } else {
-          console.log('🔑 Logging in user:', email);
-          const { token, user } = await authLogin({ email, password });
-          console.log('✅ Login successful');
-          useAuthStore.getState().setAuth(token, user.id);
-          return;
+        try {
+          if (isSignUp) {
+            if (!username || username.length < 3) throw new Error("Username must be at least 3 characters");
+            if (password !== confirmPassword) throw new Error("Passwords do not match");
+            console.log('📝 Registering user:', email);
+            const { token, user } = await authRegister({
+              email,
+              password,
+              username: username.toLowerCase(),
+            });
+            console.log('✅ Registration successful');
+            useAuthStore.getState().setAuth(token, user.id);
+            // Let the parent component update through Zustand store subscription
+            return;
+          } else {
+            console.log('🔑 Logging in user:', email);
+            const { token, user } = await authLogin({ email, password });
+            console.log('✅ Login successful');
+            useAuthStore.getState().setAuth(token, user.id);
+            return;
+          }
+        } catch (apiErr: any) {
+          console.warn('⚠️ REST API failed, falling back to Supabase:', apiErr.message);
+          // Fall through to Supabase auth below
         }
       }
 
+      // Fallback to Supabase authentication
+      console.log('🔄 Falling back to Supabase authentication');
       if (isSignUp) {
         if (!username || username.length < 3) throw new Error("Username must be at least 3 characters");
         if (password !== confirmPassword) throw new Error("Passwords do not match");
 
-        // Sign up via server (uses admin SDK to auto-confirm email + save profile to KV)
-        const res = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-78efa14d/signup`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
-            body: JSON.stringify({ email, password, name: username }),
-          }
-        );
-        const data = await res.json();
-        
-        // Handle specific error cases
-        if (!res.ok) {
-          if (data.code === 'email_exists' || res.status === 409) {
-            // Email already registered - offer to sign in instead
-            throw new Error('This email is already registered. Please sign in below.');
-          }
-          throw new Error(data.error || 'Sign up failed. Please try again.');
-        }
+        // Sign up via Supabase, then attempt immediate sign-in so users land in the app
+        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) throw signUpError;
 
-        // Now sign in with the new credentials
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
+        if (!signInData?.user) throw new Error('Sign-in succeeded but no user returned after sign-up');
 
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
           // Handle specific login errors
           if (signInError.message?.includes('Invalid login credentials')) {
@@ -146,6 +137,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           }
           throw signInError;
         }
+        if (!signInData?.user) throw new Error('Sign-in succeeded but no user data');
       }
 
       onLogin?.();
@@ -171,12 +163,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setError(null);
     
     try {
-      if (isRestApi()) {
-        throw new Error('Demo login is only available with the Supabase backend. Create an account to continue.');
-      }
-      console.log('🎮 Demo login: Calling server endpoint...');
-      
-      // Call server endpoint to setup/recreate demo user
+      console.log('🎮 Demo login: Calling Supabase demo function...');
+      // Always attempt Supabase demo function as a fallback, even if REST API mode is enabled
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-78efa14d/demo-login`,
         {
@@ -213,7 +201,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       
     } catch (err: any) {
       console.error('❌ Demo login failed:', err);
-      setError('Demo login failed. Please try regular sign up instead.');
+      setError(err?.message || 'Demo login failed. Please try regular sign up instead.');
     } finally {
       setLoading(false);
     }

@@ -29,7 +29,8 @@ export type MeResponse = {
 
 async function rawFetch(path: string, init: RequestInit = {}, withAuth: boolean): Promise<Response> {
   const base = restApiBase();
-  console.log('🌐 Fetching:', `${base}${path}`);
+  const fullUrl = `${base}${path}`;
+  console.log('🌐 Fetching:', fullUrl);
   const headers = new Headers(init.headers);
   if (
     !headers.has('Content-Type') &&
@@ -48,13 +49,18 @@ async function rawFetch(path: string, init: RequestInit = {}, withAuth: boolean)
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
   
   try {
-    const response = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
+    const response = await fetch(fullUrl, { ...init, headers, signal: controller.signal });
     clearTimeout(timeoutId);
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout (10s) - Backend not responding. Check API_URL: ' + base);
+      console.error('⏱️ Timeout:', fullUrl);
+      throw new Error(`Backend timeout (10s). Is it running at ${base}? Visit ${base}/health to check.`);
+    }
+    if (error instanceof Error && error.message.includes('Failed to fetch')) {
+      console.error('🔴 Network error:', fullUrl, error.message);
+      throw new Error(`Cannot reach backend at ${base}. Check: 1) Backend is running, 2) VITE_API_URL is correct, 3) No CORS issues. Try: ${base}/health`);
     }
     console.error('🔴 Fetch error:', error);
     throw error;
