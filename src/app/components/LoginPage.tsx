@@ -163,8 +163,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setError(null);
     
     try {
+      if (isRestApi()) {
+        // Demo login depends on Supabase functions and is not available when using the REST API backend.
+        throw new Error('Demo login is not available when using the REST API backend. Please create an account or test on the Supabase-backed deployment.');
+      }
       console.log('🎮 Demo login: Calling Supabase demo function...');
-      // Always attempt Supabase demo function as a fallback, even if REST API mode is enabled
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-78efa14d/demo-login`,
         {
